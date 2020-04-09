@@ -56,7 +56,7 @@ void Box::Draw() {
 class Board 
 {
 public:
-	bool turn;//0 turno de rojo, 1 turno de negro
+	bool turn,chosen;//0 turno de rojo, 1 turno de negro
 	Box Boxs[ml][ml];// casillas del tablero
 	int chosenx, choseny;
 	void NewBoard();
@@ -64,7 +64,7 @@ public:
 	void Check();
 	bool Chose(int x, int y);
 	bool Action(int x, int y);
-	void DrawChosen();
+	void Run(int x, int y);
 };
 void Board::NewBoard() 
 {
@@ -175,14 +175,16 @@ bool Board::Chose(int x, int y)
 bool Board::Action(int x, int y) 
 {
 	if (!Boxs[x][y].free)return false;
-
+	Box aux;
 	if ((((x - chosenx) * (y - choseny)) == 4 || ((x - chosenx) * (y - choseny)) == -4) && (Boxs[chosenx][choseny].capture))
 	{
+		
 		if (((y - choseny) == (turn ? 2 : -2)) || Boxs[chosenx][choseny].king)//que sea dama o que sigua la direccion del jugador
 		{
-			Boxs[(x - chosenx) / 2 + chosenx][(y - choseny) / 2 + choseny] = Boxs[x][y];//vaciar la ficha capturada
+			aux = Boxs[x][y];//copiar la casilla vacia
+			Boxs[(x - chosenx) / 2 + chosenx][(y - choseny) / 2 + choseny] = aux;//vaciar la ficha capturada
 			Boxs[x][y] = Boxs[chosenx][choseny];//mover la ficha al destino
-			Boxs[chosenx][choseny] = Boxs[(x - chosenx) / 2 + chosenx][(x - choseny) / 2 + choseny];//vaciar el origen
+			Boxs[chosenx][choseny] = aux;//vaciar el origen
 			Check();
 			return true;
 		};
@@ -190,9 +192,9 @@ bool Board::Action(int x, int y)
 	}
 	else if ((((x - chosenx) * (y - choseny)) == 1 || ((x - chosenx) * (y - choseny)) == -1) && (!Boxs[chosenx][choseny].capture))
 	{
-		if ((y - choseny) == (turn ? 1 : -1)||Boxs[chosenx][choseny].king))
+		if ((y - choseny) == (turn ? 1 : -1)||Boxs[chosenx][choseny].king)
 		{
-			Box aux=Boxs[x][y];//casilla vacia
+			aux=Boxs[x][y];//casilla vacia
 			Boxs[x][y] = Boxs[chosenx][choseny];//mover hasta el destino
 			Boxs[chosenx][choseny] = aux;//vaciar el origen
 			return true;
@@ -211,18 +213,39 @@ void Board::Draw()
 		Boxs[i][j].Draw();
 		glTranslatef(-i, -j, 0);
 	};
+	//elegido
+	if (chosen)
+	{
+		glTranslatef(chosenx, choseny, 0);
+		glColor4f(0, 0, 1, 1);
+		glBegin(GL_QUADS);
+		glVertex3d(-0.5, -0.5, 0.01);
+		glVertex3d(0.5, -0.5, 0.01);
+		glVertex3d(0.5, 0.5, 0.01);
+		glVertex3d(-0.5, 0.5, 0.01);
+		glEnd();
+		glTranslatef(-chosenx, -choseny, 0);
+	};
 };
-void Board::DrawChosen() 
+void Board::Run(int x, int y)
 {
-	glTranslatef(chosenx, choseny, 0);
-	glColor4f(0,0,1,1);
-	glBegin(GL_QUADS);
-	glVertex3d(-0.5, -0.5, 0.01);
-	glVertex3d(0.5, -0.5, 0.01);
-	glVertex3d(0.5, 0.5, 0.01);
-	glVertex3d(-0.5, 0.5, 0.01);
-	glEnd();
-	glTranslatef(-chosenx, -choseny, 0);
+	// funcionamiento del tablero
+	Check();
+	if (Chose(x, y))
+	{
+		chosen = true;
+		return;
+	};
+	if (chosen)
+	{
+		Check();
+		if (Action(x, y))
+		{
+			chosen = false;
+			if (Boxs[x][y].capture)turn = !turn;
+			turn = !turn;
+		};
+	};
 };
 
 class Game 
@@ -245,22 +268,7 @@ void Game::Mouse(int x, int y)
 		int i, j;
 		i = x / WinSize *ml;
 		j = (WinSize-y) / WinSize *ml;//convertir pixeles a casillas
-		MyBoard.Check();
-		if (MyBoard.Chose(i, j))
-		{
-			chosen = true;
-			return;
-		};
-
-		if (chosen)
-		{
-			if (MyBoard.Action(i, j))
-			{
-				chosen = false;
-				if (MyBoard.Boxs[i][j].capture)MyBoard.turn = !MyBoard.turn;
-					MyBoard.turn = !MyBoard.turn;
-			};
-		};
+		MyBoard.Run(i, j);
 
 	};
 
@@ -268,7 +276,6 @@ void Game::Mouse(int x, int y)
 void Game::Draw() 
 {
 	MyBoard.Draw();
-	if (chosen)MyBoard.DrawChosen();
 
 };
 
