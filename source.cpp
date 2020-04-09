@@ -1,87 +1,274 @@
 #include "GL/glut.h"
 #include<GL/ETSIDI.h>
+
 void OnDraw(void); //esta funcion sera llamada para dibujar
 void OnTimer(int value); //esta funcion sera llamada cuando transcurra una temporizacion
 void OnKeyboardDown(unsigned char key, int x, int y); //cuando se pulse una tecla	
 void OnMouseClick(int button,int state,int x, int y);
-void eatCounter(bool t, int& eat, int aux[8][8], int i, int j, int auxx=0, int auxy=0, bool eatable=false);
 const int ml = 8;
-const int WinSize = 800;
-class Box {
-public:
-	int prop;//0 vacia, 1 roja , 2 negra, 3 reina roja, 4 reina negra
-	int eat;//fichas que se puede capturar en este turno
+const float WinSize = 600;
 
+class Box
+{
+public:
+	bool free;//false=vacio,true=ocupado
+	bool color;//negro=true;rojo==false
+	bool capture;//true=se puede capturar en este turno
+	bool move;//true=puede mover en este turno
+	bool king;//true= acoronado
+	Box();//constructor por defecto
+	void Draw();
+	Box& operator= (const Box&);//operador miembro de asignacion sobrecargado
+};
+Box::Box()
+{
+	color = capture = move = king = false;
+	free = true;
+};
+Box& Box::operator= (const Box& a)
+{
+	free = a.free;
+	color = a.color;
+	capture = a.capture;
+	move = a.move;
+	king = a.king;
+	return(*this);
+};
+void Box::Draw() {
+	glBegin(GL_QUADS);
+	glVertex3d(-0.5, -0.5, 0);
+	glVertex3d(0.5, -0.5, 0);
+	glVertex3d(0.5, 0.5, 0);
+	glVertex3d(-0.5, 0.5, 0);
+	glEnd();
+	if (!free) {
+		color ? glColor4f(1, 1, 1, 1) : glColor4f(1, 0, 0, 1);
+		glutSolidSphere(0.4, 20, 20);
+	};
+	if (king) {
+		glTranslatef(0,0,0.5);
+		glColor4f(1,1,0,1);
+		glutSolidSphere(0.2, 20, 20);
+		glTranslatef(0, 0, -0.5);
+	}
 };
 
-class Board {
+class Board 
+{
 public:
 	bool turn;//0 turno de rojo, 1 turno de negro
 	Box Boxs[ml][ml];// casillas del tablero
-	Box Chosen;
+	int chosenx, choseny;
 	void NewBoard();
 	void Draw();
-	void CheckEat();
+	void Check();
 	bool Chose(int x, int y);
-	void Action(int x, int y);
+	bool Action(int x, int y);
+	void DrawChosen();
 };
-void Board::NewBoard() {
-	turn = true;//empieza rojo
+void Board::NewBoard() 
+{
+	turn = true;//empieza negro
 	for (int i = 0; i < ml; i++)
 	{
 		for (int j = 0; j < ml; j++)
 		{
-			if (i + j % 2) {
-				if (i < (ml / 2 - 1))Boxs[i][j].prop = 2;//fichas negras
-				else if (i > ml / 2)Boxs[i][j].prop = 1;//inicializar fichas rojas
+			Boxs[i][j].free = false;
+			if ((i + j) % 2==0) {
+				if (j < (ml / 2 - 1))Boxs[i][j].color = true;//fichas negras
+				else if (j > ml / 2)Boxs[i][j].color = false;//inicializar fichas rojas
+				else Boxs[i][j].free = true;
 			}
-			else Boxs[i][j].prop = 0;//vacio
+			else Boxs[i][j].free = true;;//vacio
 		};
 	};
 	//inicializar fichas
 };
-void Board::CheckEat() {
-	int aux[ml][ml];
-	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)aux[i][j] = Boxs[i][j].prop;//copiar la matriz
-	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)eatCounter(turn, Boxs[i][j].eat,aux,i, j);//iniciar arbol para cada ficha
-};
-bool Board::Chose(int x, int y) {
+void Board::Check() 
+{
+	int dirx, diry;
 	for (int i = 0; i < ml; i++)
 	{
-		for (int j = 0; j < ml; j++) {
-			if (Boxs[x][y].eat < Boxs[i][j].eat) {
-				return false;
+		for (int j = 0; j < ml; j++) 
+		{
+			Boxs[i][j].capture = false;//inicializar
+			Boxs[i][j].move = false;
+			if (turn)diry = 1;//hacia arriba si en de color negro
+			else diry = -1;// hacia abajo si es de color rojo
+			if (Boxs[i][j].color==turn)
+			{
+				if ((j + diry )< ml&&(j+diry)>=0)
+				{
+					dirx = 1;//derecha
+					if ((i + dirx) < ml)//condicion para que no producza error
+						if (Boxs[i + dirx][j + diry].free)
+							//primero compueba que j+dir no se sale del alcance de la matriz
+							Boxs[i][j].move = true;//se puede mover
+
+					if ((i + dirx * 2) < ml && (j + diry * 2) < ml && (j + diry*2) >= 0)
+						if ((Boxs[i + dirx * 2][j + diry * 2].free) && turn != Boxs[i + dirx][j + diry].color && !Boxs[i + dirx][j + diry].free)
+							Boxs[i][j].capture = true;
+					dirx = -1; //izquierda
+					if ((i + dirx) >= 0)//condicion para que no producza error
+						if (Boxs[i + dirx][j + diry].free)
+							//primero compueba que j+dir no se sale del alcance de la matriz
+							Boxs[i][j].move = true;//se puede mover
+
+					if ((i + dirx * 2) >= 0 && (j + diry * 2)<ml && (j + diry*2) >= 0)
+						if (Boxs[i + dirx * 2][j + diry * 2].free && turn != Boxs[i + dirx][j + diry].color && !Boxs[i + dirx][j + diry].free)
+							Boxs[i][j].capture = true;
+				};
+				
+				diry *= -1;//campnbiar la direccion de eje y, repetir para las fichas acoronadas
+
+				if ((j + diry) >=0 && Boxs[i][j].king==true && (j + diry ) <ml)
+				{
+					dirx = 1;//derecha
+					if ((i + dirx) < ml)//condicion para que no producza error
+						if (Boxs[i + dirx][j + diry].free)
+							//primero compueba que j+dir no se sale del alcance de la matriz
+							Boxs[i][j].move = true;//se puede mover
+
+					if ((i + dirx * 2) < ml && (j + diry * 2)>=0 && (j + diry * 2) <ml)
+						if (Boxs[i + dirx * 2][j + diry * 2].free && turn != Boxs[i + dirx][j + diry].color && !Boxs[i + dirx][j + diry].free)
+							Boxs[i][j].capture = true;
+					dirx = -1; //izquierda
+					if ((i + dirx) >= 0)//condicion para que no producza error
+						if (Boxs[i + dirx][j + diry].free)
+							//primero compueba que j+dir no se sale del alcance de la matriz
+							Boxs[i][j].move = true;//se puede mover
+
+					if ((i + dirx * 2) >= 0 && (j + diry * 2)>=0 && (j + diry * 2) < ml)
+						if (Boxs[i + dirx * 2][j + diry * 2].free && turn != Boxs[i + dirx][j + diry].color && !Boxs[i + dirx][j + diry].free)
+							Boxs[i][j].capture = true;
+				};
 			};
+			if (Boxs[i][j].capture)Boxs[i][j].move = true;//capturar tambien cuenta como mover
 		};
 	};
-	Chosen = Boxs[x][y];
-	return true;
+
+	for (int i = 0; i < ml; i++)if (!Boxs[i][0].free && !Boxs[i][0].color)Boxs[i][0].king = true;//acoronar peones rojas
+	for (int i = 0; i < ml; i++)if (!Boxs[i][ml-1].free && Boxs[i][ml-1].color)Boxs[i][ml-1].king = true;//acoronar peons negras
 };
-void Board::Action(int x, int y) {
+bool Board::Chose(int x, int y) 
+{
+	if (Boxs[x][y].move&&!Boxs[x][y].free) 
+	{
+		if (!Boxs[x][y].capture)
+		{
+			for (int i = 0; i < ml; i++)
+				for (int j = 0; j < ml; j++)
+					if (!Boxs[i][j].free&&Boxs[i][j].color==turn&&Boxs[i][j].capture) return false;
+			chosenx = x;
+			choseny = y;//mueve sin capturar
+			return true;
+		}
+		else
+		{
+			chosenx = x;
+			choseny = y;//mueve sin capturar
+			return true;
+		};
+	}
+	else return false;// si no se puede mover(incluye capturar)
+};
+bool Board::Action(int x, int y) 
+{
+	if (!Boxs[x][y].free)return false;
+
+	if ((((x - chosenx) * (y - choseny)) == 4 || ((x - chosenx) * (y - choseny)) == -4) && (Boxs[chosenx][choseny].capture))
+	{
+		if (((y - choseny) == (turn ? 2 : -2)) || Boxs[chosenx][choseny].king)//que sea dama o que sigua la direccion del jugador
+		{
+			Boxs[(x - chosenx) / 2 + chosenx][(y - choseny) / 2 + choseny] = Boxs[x][y];//vaciar la ficha capturada
+			Boxs[x][y] = Boxs[chosenx][choseny];//mover la ficha al destino
+			Boxs[chosenx][choseny] = Boxs[(x - chosenx) / 2 + chosenx][(x - choseny) / 2 + choseny];//vaciar el origen
+			Check();
+			return true;
+		};
+
+	}
+	else if ((((x - chosenx) * (y - choseny)) == 1 || ((x - chosenx) * (y - choseny)) == -1) && (!Boxs[chosenx][choseny].capture))
+	{
+		if ((y - choseny) == (turn ? 1 : -1))
+		{
+			Box aux=Boxs[x][y];//casilla vacia
+			Boxs[x][y] = Boxs[chosenx][choseny];//mover hasta el destino
+			Boxs[chosenx][choseny] = aux;//vaciar el origen
+			return true;
+		};
+	};
+
+	return false;
 	
 };
+void Board::Draw()
+{
+	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)
+	{
+		glTranslatef(i, j, 0);
+		(i + j) % 2 == 0 ? glColor4f(0.1, 0.1, 0.1, 1) : glColor4f(1, 1, 1, 1);//color negro si el impar
+		Boxs[i][j].Draw();
+		glTranslatef(-i, -j, 0);
+	};
+};
+void Board::DrawChosen() 
+{
+	glTranslatef(chosenx, choseny, 0);
+	glColor4f(0,0,1,1);
+	glBegin(GL_QUADS);
+	glVertex3d(-0.5, -0.5, 0.01);
+	glVertex3d(0.5, -0.5, 0.01);
+	glVertex3d(0.5, 0.5, 0.01);
+	glVertex3d(-0.5, 0.5, 0.01);
+	glEnd();
+	glTranslatef(-chosenx, -choseny, 0);
+};
 
-class Game {
+class Game 
+{
 public:
 	Board MyBoard;
-	bool menu,chosen;
+	bool menu,chosen=false;
 	void NewGame();
 	void Mouse(int x, int y);
 	void Draw();
 };
-void Game::NewGame(){
+void Game::NewGame()
+{
 	MyBoard.NewBoard();
+	MyBoard.Check();
 };
-void Game::Mouse(int x, int y) {
+void Game::Mouse(int x, int y) 
+{
 	if (!menu) {
 		int i, j;
-		i = x / WinSize * 0.8;
-		j = y / WinSize * 0.8;
-		if (!chosen)chosen = MyBoard.Chose(i, j);
-		else MyBoard.Action(i,j);
+		i = x / WinSize *ml;
+		j = (WinSize-y) / WinSize *ml;//convertir pixeles a casillas
+		MyBoard.Check();
+		if (MyBoard.Chose(i, j))
+		{
+			chosen = true;
+			return;
+		};
+
+		if (chosen)
+		{
+			if (MyBoard.Action(i, j))
+			{
+				chosen = false;
+				if (MyBoard.Boxs[i][j].capture)MyBoard.turn = !MyBoard.turn;
+					MyBoard.turn = !MyBoard.turn;
+			};
+		};
+
 	};
+
 };
-void Game::Draw() {
+void Game::Draw() 
+{
+	MyBoard.Draw();
+	if (chosen)MyBoard.DrawChosen();
 
 };
 
@@ -90,18 +277,24 @@ Game MyGame;
 
 int main(int argc, char* argv[])
 {
+	MyGame.NewGame();
+	FreeConsole();
 	//Inicializar el gestor de ventanas GLUT
 	//y crear la ventana
 	glutInit(&argc, argv);
-	glutInitWindowSize(800, 600);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	glutCreateWindow("MiJuego");
+	glutInitWindowSize(WinSize, WinSize);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
+	glutCreateWindow("Minidamas");
 
 	//habilitar luces y definir perspectiva
 	glEnable(GL_LIGHT0);
 	glEnable(GL_LIGHTING);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_COLOR_MATERIAL);
+	glMatrixMode(GL_PROJECTION);
+	gluPerspective(40.0, WinSize / (float)WinSize, 0.1, 150);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	//Registrar los callbacks
 	glutDisplayFunc(OnDraw);
@@ -116,17 +309,16 @@ int main(int argc, char* argv[])
 }
 void OnDraw(void)
 {
-	//Borrado de la pantalla	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glMatrixMode(GL_PROJECTION);
-	glOrtho(0,WinSize,0,WinSize,0,0.01);
+
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+	float aux = ml / 2.0f - 0.5;//en el medio
+	gluLookAt(aux, aux, aux * 3.2, aux, aux + 1e-8, 0.0,      // hacia que punto mira  (0,0,0) 
+		0.0, 0.0, 1.0);      // definimos hacia arriba (eje Y)    
 
 	MyGame.Draw();
-
-	//no borrar esta linea ni poner nada despues
 	glutSwapBuffers();
 }
 void OnKeyboardDown(unsigned char key, int x_t, int y_t)
@@ -135,109 +327,11 @@ void OnKeyboardDown(unsigned char key, int x_t, int y_t)
 }
 void OnTimer(int value)
 {
-
 }
 void OnMouseClick(int button, int state, int x, int y) {
 	if (button == GLUT_LEFT && state == GLUT_DOWN) {
 		MyGame.Mouse(x, y);
 	};
+	glutPostRedisplay();
 };
 
-void eatCounter(bool t, int& eat, int aux[8][8], int i, int j, int auxx, int auxy, bool eatable)
-{
-	int aaux[ml][ml];//matriz auxiliar para no afcetar a la original
-	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)aaux[i][j] = aux[i][j];//copiar la matriz
-	if (eatable) {
-		eat++; //contador aumenta
-		aaux[i + auxx][j + auxx] = 0;//desaparece la ficha que ha sido capturada
-		aaux[i + auxx * 2][j + auxy * 2] = aux[i][j];//en la distancia dos pone la ficha "comedor"
-		aaux[i][j] = 0;//pone vacio en la posicion original de la ficha comedor
-	};
-	if (t) {//turno de rojas
-		if ((aux[i][j] == 1 || aux[i][j] == 3) && (i < ml - 2))
-		{
-			auxx = 1;//hacia arriba
-			if (j < ml - 2)//verificar si va a salir del tablero
-			{
-				auxy = 1;//derecha
-				if ((aux[i + auxx][j + auxy] == 2 || aux[i + auxx][j + auxy] == 4) && (aux[i + auxx * 2][j + auxy * 2] == 0))
-				{
-					//si es reina o peon de rojas(2 o 4) y en la direccion con distancia 1 es una ficha enemiga
-					//y el direccion con distancia 2 esta vacia hace lo siguiente:
-					eatCounter(t, eat, aaux, i + auxx * 2, j + auxy * 2, auxx, auxy, true);// vuelve a llamar la funcion
-				};
-			}
-			else if (j > 1)
-			{
-				auxy = -1;
-				if ((aux[i + auxx][j + auxy] == 2 || aux[i + auxx][j + auxy] == 4) && (aux[i + auxx * 2][j + auxy * 2] == 0))
-				{
-					eatCounter(t, eat, aaux, i + auxx * 2, j + auxy * 2, auxx, auxy, true);
-				};
-			};
-		}
-		else if ((aux[i][j] == 3) && (i > 1))
-		{
-			auxx = -1;
-			if (j < ml - 2)
-			{
-				auxy = 1;//direcction de captura
-				if ((aux[i + auxx][j + auxy] == 2 || aux[i + auxx][j + auxy] == 4) && (aux[i + auxx * 2][j + auxy * 2] == 0))
-				{
-					eatCounter(t, eat, aaux, i + auxx * 2, j + auxy * 2, auxx, auxy, true);
-				};
-			}
-			else if (j > 1)
-			{
-				auxy = -1;
-				if ((aux[i + auxx][j + auxy] == 2 || aux[i + auxx][j + auxy] == 4) && (aux[i + auxx * 2][j + auxy * 2] == 0))
-				{
-					eatCounter(t, eat, aaux, i + auxx * 2, j + auxy * 2, auxx, auxy, true);
-				};
-			};
-		};
-	}
-	else
-	{
-		if ((aux[i][j] == 2 || aux[i][j] == 4) && (i > 1))
-		{
-			auxx = -1;
-			if (j < ml - 2)//dentro del tablero
-			{
-				auxy = 1;//direcction de captura
-				if ((aux[i + auxx][j + auxy] == 2 || aux[i + auxx][j + auxy] == 4) && (aux[i + auxx * 2][j + auxy * 2] == 0))
-				{
-					eatCounter(t, eat, aaux, i + auxx * 2, j + auxy * 2, auxx, auxy, true);
-				};
-			}
-			else if (j > 1)
-			{
-				auxy = -1;
-				if ((aux[i + auxx][j + auxy] == 2 || aux[i + auxx][j + auxy] == 4) && (aux[i + auxx * 2][j + auxy * 2] == 0))
-				{
-					eatCounter(t, eat, aaux, i + auxx * 2, j + auxy * 2, auxx, auxy, true);
-				};
-			};
-		}
-		else if ((aux[i][j] == 4) && (i < ml - 2))
-		{
-			auxx = 1;
-			if (j < ml - 2)
-			{
-				auxy = 1;//direcction de captura
-				if ((aux[i + auxx][j + auxy] == 2 || aux[i + auxx][j + auxy] == 4) && (aux[i + auxx * 2][j + auxy * 2] == 0))
-				{
-					eatCounter(t, eat, aaux, i + auxx * 2, j + auxy * 2, auxx, auxy, true);
-				};
-			}
-			else if (j > 1)
-			{
-				auxy = -1;
-				if ((aux[i + auxx][j + auxy] == 2 || aux[i + auxx][j + auxy] == 4) && (aux[i + auxx * 2][j + auxy * 2] == 0))
-				{
-					eatCounter(t, eat, aaux, i + auxx * 2, j + auxy * 2, auxx, auxy, true);
-				};
-			};
-		};
-	};
-};
