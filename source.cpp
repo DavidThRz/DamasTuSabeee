@@ -190,7 +190,7 @@ bool Board::Action(int x, int y)
 	}
 	else if ((((x - chosenx) * (y - choseny)) == 1 || ((x - chosenx) * (y - choseny)) == -1) && (!Boxs[chosenx][choseny].capture))
 	{
-		if ((y - choseny) == (turn ? 1 : -1))
+		if ((y - choseny) == (turn ? 1 : -1)||Boxs[chosenx][choseny].king))
 		{
 			Box aux=Boxs[x][y];//casilla vacia
 			Boxs[x][y] = Boxs[chosenx][choseny];//mover hasta el destino
