@@ -271,6 +271,7 @@ void Board::Run(int x, int y)
 			chosen = false;
 			if (Boxs[x][y].capture)turn = !turn;
 			turn = !turn;
+			Check();
 		};
 	};
 };
