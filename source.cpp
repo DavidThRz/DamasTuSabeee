@@ -1,12 +1,17 @@
-#include "GL/glut.h"
+#define _CRT_SECURE_NO_WARNINGS
+#include "GL/freeglut.h"
 #include<GL/ETSIDI.h>
 
 void OnDraw(void); //esta funcion sera llamada para dibujar
 void OnTimer(int value); //esta funcion sera llamada cuando transcurra una temporizacion
 void OnKeyboardDown(unsigned char key, int x, int y); //cuando se pulse una tecla	
 void OnMouseClick(int button,int state,int x, int y);
+void DrawString(float x, float y, const char* c, int var = 0, bool v = false);
+
 const int ml = 8;
 const float WinSize = 600;
+const int MaxStrLen = 100;
+
 
 class Box
 {
@@ -56,17 +61,17 @@ void Box::Draw() {
 class Board 
 {
 public:
-	bool turn,chosen;//0 turno de rojo, 1 turno de negro
+	bool turn,chosen,end;//0 turno de rojo, 1 turno de negro
 	Box Boxs[ml][ml];// casillas del tablero
 	int chosenx, choseny;
-	void NewBoard();
+	Board();
 	void Draw();
 	void Check();
 	bool Chose(int x, int y);
 	bool Action(int x, int y);
 	void Run(int x, int y);
 };
-void Board::NewBoard() 
+Board::Board() 
 {
 	turn = true;//empieza negro
 	for (int i = 0; i < ml; i++)
@@ -147,6 +152,8 @@ void Board::Check()
 		};
 	};
 
+	end = true;
+	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)if (Boxs[i][j].move && !Boxs[i][j].free)end = false;//fin de la partida
 	for (int i = 0; i < ml; i++)if (!Boxs[i][0].free && !Boxs[i][0].color)Boxs[i][0].king = true;//acoronar peones rojas
 	for (int i = 0; i < ml; i++)if (!Boxs[i][ml-1].free && Boxs[i][ml-1].color)Boxs[i][ml-1].king = true;//acoronar peons negras
 };
@@ -226,6 +233,26 @@ void Board::Draw()
 		glEnd();
 		glTranslatef(-chosenx, -choseny, 0);
 	};
+	if (end)
+	{
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, ETSIDI::getTexture("dialogue.png").id);
+		glTranslatef((ml / 2 - 0.5), (ml / 2 - 0.5), 0);
+		glBegin(GL_POLYGON);
+		glColor4f(1, 1, 1, 1);
+		glTexCoord2d(0, 1);	glVertex3f(1, 0.5, 0);
+		glTexCoord2d(1, 1);	glVertex3f(1, -0.5, 0);
+		glTexCoord2d(1, 0);	glVertex3f(-1,-0.5, 0);
+		glTexCoord2d(0, 0);	glVertex3f(-1, 0.5, 0);
+		glEnd(); 
+		glTranslatef((-ml / 2 - 0.5), -(ml / 2 - 0.5), 0);
+		glDisable(GL_TEXTURE_2D);
+		glColor4f(0,0,0,1);
+		if (turn)DrawString(ml/2.0f,ml/2.0f-0.5,"Red Wins");
+		else DrawString(ml / 2.0f, ml / 2.0f-0.5, "Black Wins");
+		glEnable(GL_DEPTH_TEST);
+	};
 };
 void Board::Run(int x, int y)
 {
@@ -252,31 +279,29 @@ class Game
 {
 public:
 	Board MyBoard;
-	bool menu,chosen=false;
-	void NewGame();
+	Game();
+	bool menu;
 	void Mouse(int x, int y);
 	void Draw();
 };
-void Game::NewGame()
+Game::Game()
 {
-	MyBoard.NewBoard();
-	MyBoard.Check();
 };
 void Game::Mouse(int x, int y) 
 {
 	if (!menu) {
 		int i, j;
-		i = x / WinSize *ml;
-		j = (WinSize-y) / WinSize *ml;//convertir pixeles a casillas
+		i = x / WinSize * ml;
+		j = (WinSize - y) / WinSize * ml;//convertir pixeles a casillas
 		MyBoard.Run(i, j);
-
 	};
+
 
 };
 void Game::Draw() 
 {
 	MyBoard.Draw();
-
+	
 };
 
 
@@ -284,7 +309,6 @@ Game MyGame;
 
 int main(int argc, char* argv[])
 {
-	MyGame.NewGame();
 	FreeConsole();
 	//Inicializar el gestor de ventanas GLUT
 	//y crear la ventana
@@ -330,10 +354,11 @@ void OnDraw(void)
 }
 void OnKeyboardDown(unsigned char key, int x_t, int y_t)
 {
-
+	glutPostRedisplay();
 }
 void OnTimer(int value)
 {
+	glutPostRedisplay();
 }
 void OnMouseClick(int button, int state, int x, int y) {
 	if (button == GLUT_LEFT && state == GLUT_DOWN) {
@@ -342,3 +367,27 @@ void OnMouseClick(int button, int state, int x, int y) {
 	glutPostRedisplay();
 };
 
+
+void DrawString(float x, float y, const char* c, int var, bool v) {
+	char ch[MaxStrLen];
+	strcpy(ch, c);
+	if (v) {
+		char cha[MaxStrLen];
+		int cifras = 0;
+		int aux = var;
+		while (aux / 10 > 0) {
+			cifras++;
+			aux /= 10;
+		};
+		aux = var;
+		cha[cifras + 1] = '\0';
+		while (cifras >= 0) {
+			cha[cifras] = 48 + aux % 10;
+			aux /= 10;
+			cifras--;
+		};
+		strcat(ch, cha);
+	};
+	glRasterPos2f(x, y);
+	glutBitmapString(GLUT_BITMAP_HELVETICA_18, reinterpret_cast<const unsigned char*>(ch));
+};
