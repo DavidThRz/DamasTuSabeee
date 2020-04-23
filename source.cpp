@@ -1,11 +1,11 @@
 #define _CRT_SECURE_NO_WARNINGS
-#include "GL/freeglut.h"
-#include<GL/ETSIDI.h>
+#include "freeglut.h"
+#include <ETSIDI.h>
 
 void OnDraw(void); //esta funcion sera llamada para dibujar
 void OnTimer(int value); //esta funcion sera llamada cuando transcurra una temporizacion
 void OnKeyboardDown(unsigned char key, int x, int y); //cuando se pulse una tecla	
-void OnMouseClick(int button,int state,int x, int y);
+void OnMouseClick(int button, int state, int x, int y);
 void DrawString(float x, float y, const char* c, int var = 0, bool v = false);
 
 const int ml = 8;
@@ -51,17 +51,17 @@ void Box::Draw() {
 		glutSolidSphere(0.4, 20, 20);
 	};
 	if (king) {
-		glTranslatef(0,0,0.5);
-		glColor4f(1,1,0,1);
+		glTranslatef(0, 0, 0.5);
+		glColor4f(1, 1, 0, 1);
 		glutSolidSphere(0.2, 20, 20);
 		glTranslatef(0, 0, -0.5);
 	}
 };
 
-class Board 
+class Board
 {
 public:
-	bool turn,chosen,end;//0 turno de rojo, 1 turno de negro
+	bool turn, chosen, end;//0 turno de rojo, 1 turno de negro
 	Box Boxs[ml][ml];// casillas del tablero
 	int chosenx, choseny;
 	Board();
@@ -70,8 +70,9 @@ public:
 	bool Chose(int x, int y);
 	bool Action(int x, int y);
 	void Run(int x, int y);
+	int contador();
 };
-Board::Board() 
+Board::Board()
 {
 	turn = true;//empieza negro
 	for (int i = 0; i < ml; i++)
@@ -79,7 +80,7 @@ Board::Board()
 		for (int j = 0; j < ml; j++)
 		{
 			Boxs[i][j].free = false;
-			if ((i + j) % 2==0) {
+			if ((i + j) % 2 == 0) {
 				if (j < (ml / 2 - 1))Boxs[i][j].color = true;//fichas negras
 				else if (j > ml / 2)Boxs[i][j].color = false;//inicializar fichas rojas
 				else Boxs[i][j].free = true;
@@ -89,20 +90,20 @@ Board::Board()
 	};
 	//inicializar fichas
 };
-void Board::Check() 
+void Board::Check()
 {
 	int dirx, diry;
 	for (int i = 0; i < ml; i++)
 	{
-		for (int j = 0; j < ml; j++) 
+		for (int j = 0; j < ml; j++)
 		{
 			Boxs[i][j].capture = false;//inicializar
 			Boxs[i][j].move = false;
 			if (turn)diry = 1;//hacia arriba si en de color negro
 			else diry = -1;// hacia abajo si es de color rojo
-			if (Boxs[i][j].color==turn)
+			if (Boxs[i][j].color == turn)
 			{
-				if ((j + diry )< ml&&(j+diry)>=0)
+				if ((j + diry) < ml && (j + diry) >= 0)
 				{
 					dirx = 1;//derecha
 					if ((i + dirx) < ml)//condicion para que no producza error
@@ -110,7 +111,7 @@ void Board::Check()
 							//primero compueba que j+dir no se sale del alcance de la matriz
 							Boxs[i][j].move = true;//se puede mover
 
-					if ((i + dirx * 2) < ml && (j + diry * 2) < ml && (j + diry*2) >= 0)
+					if ((i + dirx * 2) < ml && (j + diry * 2) < ml && (j + diry * 2) >= 0)
 						if ((Boxs[i + dirx * 2][j + diry * 2].free) && turn != Boxs[i + dirx][j + diry].color && !Boxs[i + dirx][j + diry].free)
 							Boxs[i][j].capture = true;
 					dirx = -1; //izquierda
@@ -119,14 +120,14 @@ void Board::Check()
 							//primero compueba que j+dir no se sale del alcance de la matriz
 							Boxs[i][j].move = true;//se puede mover
 
-					if ((i + dirx * 2) >= 0 && (j + diry * 2)<ml && (j + diry*2) >= 0)
+					if ((i + dirx * 2) >= 0 && (j + diry * 2) < ml && (j + diry * 2) >= 0)
 						if (Boxs[i + dirx * 2][j + diry * 2].free && turn != Boxs[i + dirx][j + diry].color && !Boxs[i + dirx][j + diry].free)
 							Boxs[i][j].capture = true;
 				};
-				
+
 				diry *= -1;//campnbiar la direccion de eje y, repetir para las fichas acoronadas
 
-				if ((j + diry) >=0 && Boxs[i][j].king==true && (j + diry ) <ml)
+				if ((j + diry) >= 0 && Boxs[i][j].king == true && (j + diry) < ml)
 				{
 					dirx = 1;//derecha
 					if ((i + dirx) < ml)//condicion para que no producza error
@@ -134,7 +135,7 @@ void Board::Check()
 							//primero compueba que j+dir no se sale del alcance de la matriz
 							Boxs[i][j].move = true;//se puede mover
 
-					if ((i + dirx * 2) < ml && (j + diry * 2)>=0 && (j + diry * 2) <ml)
+					if ((i + dirx * 2) < ml && (j + diry * 2) >= 0 && (j + diry * 2) < ml)
 						if (Boxs[i + dirx * 2][j + diry * 2].free && turn != Boxs[i + dirx][j + diry].color && !Boxs[i + dirx][j + diry].free)
 							Boxs[i][j].capture = true;
 					dirx = -1; //izquierda
@@ -143,7 +144,7 @@ void Board::Check()
 							//primero compueba que j+dir no se sale del alcance de la matriz
 							Boxs[i][j].move = true;//se puede mover
 
-					if ((i + dirx * 2) >= 0 && (j + diry * 2)>=0 && (j + diry * 2) < ml)
+					if ((i + dirx * 2) >= 0 && (j + diry * 2) >= 0 && (j + diry * 2) < ml)
 						if (Boxs[i + dirx * 2][j + diry * 2].free && turn != Boxs[i + dirx][j + diry].color && !Boxs[i + dirx][j + diry].free)
 							Boxs[i][j].capture = true;
 				};
@@ -155,17 +156,18 @@ void Board::Check()
 	end = true;
 	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)if (Boxs[i][j].move && !Boxs[i][j].free)end = false;//fin de la partida
 	for (int i = 0; i < ml; i++)if (!Boxs[i][0].free && !Boxs[i][0].color)Boxs[i][0].king = true;//acoronar peones rojas
-	for (int i = 0; i < ml; i++)if (!Boxs[i][ml-1].free && Boxs[i][ml-1].color)Boxs[i][ml-1].king = true;//acoronar peons negras
+	for (int i = 0; i < ml; i++)if (!Boxs[i][ml - 1].free && Boxs[i][ml - 1].color)Boxs[i][ml - 1].king = true;//acoronar peons negras
+	
 };
-bool Board::Chose(int x, int y) 
+bool Board::Chose(int x, int y)
 {
-	if (Boxs[x][y].move&&!Boxs[x][y].free) 
+	if (Boxs[x][y].move && !Boxs[x][y].free)
 	{
 		if (!Boxs[x][y].capture)
 		{
 			for (int i = 0; i < ml; i++)
 				for (int j = 0; j < ml; j++)
-					if (!Boxs[i][j].free&&Boxs[i][j].color==turn&&Boxs[i][j].capture) return false;
+					if (!Boxs[i][j].free && Boxs[i][j].color == turn && Boxs[i][j].capture) return false;
 			chosenx = x;
 			choseny = y;//mueve sin capturar
 			return true;
@@ -179,13 +181,13 @@ bool Board::Chose(int x, int y)
 	}
 	else return false;// si no se puede mover(incluye capturar)
 };
-bool Board::Action(int x, int y) 
+bool Board::Action(int x, int y)
 {
 	if (!Boxs[x][y].free)return false;
 	Box aux;
 	if ((((x - chosenx) * (y - choseny)) == 4 || ((x - chosenx) * (y - choseny)) == -4) && (Boxs[chosenx][choseny].capture))
 	{
-		
+
 		if (((y - choseny) == (turn ? 2 : -2)) || Boxs[chosenx][choseny].king)//que sea dama o que sigua la direccion del jugador
 		{
 			aux = Boxs[x][y];//copiar la casilla vacia
@@ -199,9 +201,9 @@ bool Board::Action(int x, int y)
 	}
 	else if ((((x - chosenx) * (y - choseny)) == 1 || ((x - chosenx) * (y - choseny)) == -1) && (!Boxs[chosenx][choseny].capture))
 	{
-		if ((y - choseny) == (turn ? 1 : -1)||Boxs[chosenx][choseny].king)
+		if ((y - choseny) == (turn ? 1 : -1) || Boxs[chosenx][choseny].king)
 		{
-			aux=Boxs[x][y];//casilla vacia
+			aux = Boxs[x][y];//casilla vacia
 			Boxs[x][y] = Boxs[chosenx][choseny];//mover hasta el destino
 			Boxs[chosenx][choseny] = aux;//vaciar el origen
 			return true;
@@ -209,7 +211,7 @@ bool Board::Action(int x, int y)
 	};
 
 	return false;
-	
+
 };
 void Board::Draw()
 {
@@ -243,14 +245,14 @@ void Board::Draw()
 		glColor4f(1, 1, 1, 1);
 		glTexCoord2d(0, 1);	glVertex3f(1, 0.5, 0);
 		glTexCoord2d(1, 1);	glVertex3f(1, -0.5, 0);
-		glTexCoord2d(1, 0);	glVertex3f(-1,-0.5, 0);
+		glTexCoord2d(1, 0);	glVertex3f(-1, -0.5, 0);
 		glTexCoord2d(0, 0);	glVertex3f(-1, 0.5, 0);
-		glEnd(); 
+		glEnd();
 		glTranslatef((-ml / 2 - 0.5), -(ml / 2 - 0.5), 0);
 		glDisable(GL_TEXTURE_2D);
-		glColor4f(0,0,0,1);
-		if (turn)DrawString(ml/2.0f,ml/2.0f-0.5,"Red Wins");
-		else DrawString(ml / 2.0f, ml / 2.0f-0.5, "Black Wins");
+		glColor4f(0, 0, 0, 1);
+		if (turn)DrawString(ml / 2.0f, ml / 2.0f - 0.5, "Red Wins");
+		else DrawString(ml / 2.0f, ml / 2.0f - 0.5, "Black Wins");
 		glEnable(GL_DEPTH_TEST);
 	};
 };
@@ -275,8 +277,27 @@ void Board::Run(int x, int y)
 		};
 	};
 };
+int Board::contador()
+{
+	Box aux[ml][ml];
+	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)aux[i][j] = Boxs[i][j];//guardar el tablero
+	int contador=0;
+	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)
+	{
+		if (Chose(i, j))
+		{
+			for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)
+				if (Action(i, j))
+				{
+					contador++;
+					for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)Boxs[i][j] = aux[i][j];//resetear el tablero
+				};
+		};
+	};
+	return contador;
+};
 
-class Game 
+class Game
 {
 public:
 	Board MyBoard;
@@ -288,7 +309,7 @@ public:
 Game::Game()
 {
 };
-void Game::Mouse(int x, int y) 
+void Game::Mouse(int x, int y)
 {
 	if (!menu) {
 		int i, j;
@@ -299,10 +320,10 @@ void Game::Mouse(int x, int y)
 
 
 };
-void Game::Draw() 
+void Game::Draw()
 {
 	MyBoard.Draw();
-	
+
 };
 
 
