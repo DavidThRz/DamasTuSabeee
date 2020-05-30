@@ -18,6 +18,7 @@ Tablero::Tablero()
 };
 void Tablero::dibuja()
 {
+	revisa();
 	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)
 	{
 		glTranslatef(i, j, 0);
@@ -37,6 +38,35 @@ void Tablero::dibuja()
 		glVertex3d(-0.5, 0.5, 0.01);
 		glEnd();
 		glTranslatef(-chosenx, -choseny, 0);
+		for (int i = 0; i < 4; i++) {
+			if (destinox[i] >= 0) {
+				glTranslatef(destinox[i], destinoy[i], 0);
+				glColor4f(0, 1, 0, 1);
+				glBegin(GL_QUADS);
+				glVertex3d(-0.5, -0.5, 0.01);
+				glVertex3d(0.5, -0.5, 0.01);
+				glVertex3d(0.5, 0.5, 0.01);
+				glVertex3d(-0.5, 0.5, 0.01);
+				glEnd();
+				glTranslatef(-destinox[i], -destinoy[i], 0);
+			};
+		};
+	}
+	else
+	{
+		for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)
+			if (elije(i,j))
+			{
+				glTranslatef(i, j, 0);
+				glColor4f(0, 1, 0, 1);
+				glBegin(GL_QUADS);
+				glVertex3d(-0.5, -0.5, 0.01);
+				glVertex3d(0.5, -0.5, 0.01);
+				glVertex3d(0.5, 0.5, 0.01);
+				glVertex3d(-0.5, 0.5, 0.01);
+				glEnd();
+				glTranslatef(-i, -j, 0);
+			};
 	};
 	if (fin)
 	{
@@ -151,7 +181,7 @@ bool Tablero::elije(int x, int y)
 				for (int j = 0; j < ml; j++)
 					if (!Casillas[i][j]->getLibre() && Casillas[i][j]->getColor() == turno && Casillas[i][j]->getCap()) return false;
 			chosenx = x;
-			choseny = y;//mueve sin capturar
+			choseny = y;
 			return true;
 		}
 		else
@@ -161,7 +191,7 @@ bool Tablero::elije(int x, int y)
 			return true;
 		};
 	}
-	else return false;// si no se puede mover(incluye capturar)
+	else return false;// si no se puede mover(ni capturar)
 };
 bool Tablero::desplaza(int x, int y)
 {
@@ -172,12 +202,16 @@ bool Tablero::desplaza(int x, int y)
 
 		if (((y - choseny) == (turno ? 2 : -2)) || Casillas[chosenx][choseny]->getAcor())//que sea dama o que sigua la direccion del jugador
 		{
-			aux = Casillas[x][y];//copiar la casilla vacia
-			*Casillas[(x - chosenx) / 2 + chosenx][(y - choseny) / 2 + choseny] = aux;//vaciar la ficha capturada
-			*Casillas[x][y] = *Casillas[chosenx][choseny];//mover la ficha al destino
-			*Casillas[chosenx][choseny] = aux;//vaciar el origen
-			revisa();
-			return true;
+			if (Casillas[chosenx+(x - chosenx) / 2][choseny+(y - choseny) / 2]->getLibre() == false && Casillas[chosenx+(x - chosenx) / 2][choseny+(y - choseny) / 2]->getColor() != turno) 
+			{
+				//contener una ficha enemiga en la casilla del medio
+				aux = Casillas[x][y];//copiar la casilla vacia
+				*Casillas[(x - chosenx) / 2 + chosenx][(y - choseny) / 2 + choseny] = aux;//vaciar la ficha capturada
+				*Casillas[x][y] = *Casillas[chosenx][choseny];//mover la ficha al destino
+				*Casillas[chosenx][choseny] = aux;//vaciar el origen
+				revisa();
+				return true;
+			}
 		};
 
 	}
@@ -195,6 +229,22 @@ bool Tablero::desplaza(int x, int y)
 	return false;
 
 };
+void Tablero::destinos()
+{
+	for (int i = 0; i < 4; i++)destinox[i] = destinoy[i]=-1;
+	Casilla aux[ml][ml];
+	int contador = 0;
+	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)aux[i][j] = *Casillas[i][j];//guardar el tablero
+	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)
+		if (desplaza(i, j))
+		{
+			destinox[contador] = i;
+			destinoy[contador] = j;
+			contador++;
+			for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)*Casillas[i][j] = aux[i][j];//resetear el tablero
+		};
+	revisa();
+};
 void Tablero::proceso(int x, int y)
 {
 	// funcionamiento del tablero
@@ -202,6 +252,7 @@ void Tablero::proceso(int x, int y)
 	if (elije(x, y))
 	{
 		elegido = true;
+		destinos();
 		return;
 	};
 	if (elegido)
@@ -235,7 +286,61 @@ int Tablero::contador()
 	};
 	return contador;
 };
-
+void Tablero::guardar() {
+	FILE* file = fopen("partida.txt", "w");
+	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)
+	{
+		if (Casillas[i][j]->getLibre())fprintf(file, "0 \n");
+		else if (!Casillas[i][j]->getAcor()) {
+			if (Casillas[i][j]->getColor())fprintf(file, "1 \n");
+			else fprintf(file, "2 \n");
+		}
+		else
+		{
+			if (Casillas[i][j]->getColor())fprintf(file, "3 \n");
+			else fprintf(file, "4 \n");
+		};
+	};
+	if (turno)fprintf(file, "1 \n");
+	else fprintf(file, "0 \n");
+	fclose(file);
+};
+void Tablero::leer() {
+	FILE* file = fopen("partida.txt", "r");
+	char* buffer=new char ;
+	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)
+	{
+		fscanf(file, "%s", buffer);
+		if (buffer[0] == '0')Casillas[i][j]->setLibre(true);
+		else {
+			Casillas[i][j]->setLibre(false);
+			if (buffer[0] == '1')
+			{
+				Casillas[i][j]->setColor(true);
+				Casillas[i][j]->setAcor(false);
+			}
+			else if (buffer[0] == '2')
+			{
+				Casillas[i][j]->setColor(false);
+				Casillas[i][j]->setAcor(false);
+			}
+			else if (buffer[0] == '3')
+			{
+				Casillas[i][j]->setColor(true);
+				Casillas[i][j]->setAcor(true);
+			}
+			else if (buffer[0] == '4')
+			{
+				Casillas[i][j]->setColor(false);
+				Casillas[i][j]->setAcor(true);
+			}
+		};
+	};
+	fscanf(file, "%s", buffer);
+	if (buffer[0] == '1')turno = true;
+	else turno = false;
+	fclose(file);
+};
 void DrawString(float x, float y, const char* c, int var, bool v) {
 	char ch[MaxStrLen];
 	strcpy(ch, c);
