@@ -1,4 +1,5 @@
 #include "Tablero.h"
+
 Tablero::Tablero()
 {
 	turno = true;//empieza negro
@@ -195,7 +196,7 @@ bool Tablero::elije(int x, int y)
 };
 bool Tablero::desplaza(int x, int y)
 {
-	if (!Casillas[x][y]->getLibre()||(x + y) % 2 == 1)return false;
+	if (!Casillas[x][y]->getLibre())return false;
 	Casilla aux;
 	if ((((x - chosenx) * (y - choseny)) == 4 || ((x - chosenx) * (y - choseny)) == -4) && (Casillas[chosenx][choseny]->getCap()))
 	{
@@ -267,18 +268,24 @@ void Tablero::proceso(int x, int y)
 		};
 	};
 };
-int Tablero::contador()
-{
+int Tablero::contador(Casilla c[ml][ml],bool t, Casilla cubo[nl][ml][ml]){
+
+	turno = t;
 	Casilla aux[ml][ml];
-	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)aux[i][j] = *Casillas[i][j];//guardar el tablero
+	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)aux[i][j] = c[i][j];//guardar el tablero
+
 	int contador = 0;
-	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)
-	{
+	for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++){
+
 		if (elije(i, j))
 		{
 			for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)
-				if (desplaza(i, j))
-				{
+				if (desplaza(i, j)){	
+						for (int x = 0; x < ml; x++){  //guarda los tablero en el cubo
+							for (int y = 0; y < ml; y++) {
+								cubo[contador][x][y] = Casillas[x][y];
+							}
+						}
 					contador++;
 					for (int i = 0; i < ml; i++)for (int j = 0; j < ml; j++)*Casillas[i][j] = aux[i][j];//resetear el tablero
 				};
@@ -305,6 +312,7 @@ void Tablero::guardar() {
 	else fprintf(file, "0 \n");
 	fclose(file);
 };
+
 void Tablero::leer() {
 	FILE* file = fopen("partida.txt", "r");
 	char* buffer=new char ;
@@ -340,7 +348,8 @@ void Tablero::leer() {
 	if (buffer[0] == '1')turno = true;
 	else turno = false;
 	fclose(file);
-};
+}
+
 void DrawString(float x, float y, const char* c, int var, bool v) {
 	char ch[MaxStrLen];
 	strcpy(ch, c);
@@ -364,3 +373,4 @@ void DrawString(float x, float y, const char* c, int var, bool v) {
 	glRasterPos2f(x, y);
 	glutBitmapString(GLUT_BITMAP_HELVETICA_18, reinterpret_cast<const unsigned char*>(ch));
 };
+
