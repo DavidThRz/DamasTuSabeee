@@ -195,7 +195,7 @@ bool Tablero::elije(int x, int y)
 };
 bool Tablero::desplaza(int x, int y)
 {
-	if (!Casillas[x][y]->getLibre())return false;
+	if (!Casillas[x][y]->getLibre()||(x + y) % 2 == 1)return false;
 	Casilla aux;
 	if ((((x - chosenx) * (y - choseny)) == 4 || ((x - chosenx) * (y - choseny)) == -4) && (Casillas[chosenx][choseny]->getCap()))
 	{
